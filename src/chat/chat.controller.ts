@@ -12,6 +12,19 @@ export class ChatController {
   @Post()
   async completeChat(@Body() body: ChatRequestPayload, @Res() res) {
     const { apiKey, context, messages } = body;
+
+    if (
+      this.chatService.assessTokenCount({
+        messages: [messages[messages.length - 1]],
+      }) > 900
+    ) {
+      return res.status(400).json({
+        errorCode: 1,
+        message:
+          'Your last message is too long, try to make it shorter(around 750 words).',
+      });
+    }
+
     const configuration = new Configuration({ apiKey });
     const openai = new OpenAIApi(configuration);
     let newContext;
