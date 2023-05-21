@@ -29,8 +29,17 @@ class TransformerStream extends Transform {
 export class ChatService {
   async completeChat(
     openai: OpenAIApi,
-    messages: ChatCompletionRequestMessage[],
+    {
+      context,
+      messages,
+    }: { context?: string; messages: ChatCompletionRequestMessage[] },
   ) {
+    const prompt =
+      'Return all your responses for the user in the Markdown format.';
+    const promptWithContext = `Here's a context about what you and the user have discussed delimited by five backticks.\
+      \`\`\`\`\`${context}\`\`\`\`\`\
+      You should process the following dialog base on the context above as a background knowledge.\
+      Most importantly all your responses should be in the Markdown format.`;
     let completion;
     try {
       completion = await openai.createChatCompletion(
@@ -39,8 +48,7 @@ export class ChatService {
           messages: [
             {
               role: 'system',
-              content:
-                'Return all your responses for the user in the Markdown format.',
+              content: context ? promptWithContext : prompt,
             },
             ...messages,
           ],
@@ -60,5 +68,66 @@ export class ChatService {
     transformer.setEncoding('utf8');
 
     return completionStream.pipe(transformer) as TransformerStream;
+  }
+
+  assessTokenCount({
+    context,
+    messages,
+  }: {
+    context?: string;
+    messages: ChatCompletionRequestMessage[];
+  }) {
+    let characterCount = 0,
+      wordCount = 0;
+    if (context) {
+      wordCount = context.split(' ').length;
+      characterCount = context.length;
+    }
+
+    messages.forEach((message) => {
+      wordCount += message.content.split(' ').length;
+      characterCount += message.content.length;
+    });
+
+    return (characterCount / 4 + (wordCount / 3) * 4) / 2;
+  }
+
+  async summarizeContext(
+    openai: OpenAIApi,
+    {
+      context,
+      messages,
+    }: { context?: string; messages: ChatCompletionRequestMessage[] },
+  ) {
+    let completion;
+    const prompt = `You're gonna receive a chat history between you and me in JSON format which will be delimited by five backticks. \
+    Your task is to summarize the dialogue within 100 words. \
+    \`\`\`\`\`${JSON.stringify(messages)}\`\`\`\`\``;
+    const promptWithLastContext = `You're gonna receive a JSON that includes "context" and "dialog" fields. The JSON will be delimited by five backticks.\
+    The "context" is a summary of a dialog between you and me. \
+    And the "dialog" is an array of messages that continued after the "context". \
+    Your need to analyse if the "dialog" is relevant to the "context" first.
+      - If it is, your task will be to summarize the dialog based on the "context" within 100 words.
+      - If it's not, you can ignore the "context" and only summarize the dialog within 100 words.
+    \`\`\`\`\`${JSON.stringify({ context, messages })}\`\`\`\`\``;
+
+    try {
+      completion = await openai.createChatCompletion({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'user',
+            content: context ? promptWithLastContext : prompt,
+          },
+        ],
+        max_tokens: 600,
+        n: 1,
+        temperature: 0,
+      });
+    } catch (error) {
+      throw error;
+    }
+
+    return completion.data.choices[0].message.content;
   }
 }
