@@ -35,15 +35,13 @@ export class ChatService {
       messages,
     }: { context?: string; messages: ChatCompletionRequestMessage[] },
   ) {
-    const basePrompt =
+    const prompt =
       "You're an intelligent AI that will have a dialog with the user. \
       If they say something you don't know how to reply. Analyse if that's something you know, if it is, explain it. \
-      Your response should be the same language as the user's latest message.";
-    const prompt = `${basePrompt} Return all your responses for the user in the Markdown format.`;
-    const promptWithContext = `${basePrompt}\nHere's a context about what you and the user have discussed delimited by five backticks.\
+      Your response should be the same language as the user's latest message. Your response should as detailed as possible and well formatted.";
+    const promptWithContext = `${prompt}\nHere's a context about what you and the user have discussed delimited by five backticks.\
       \`\`\`\`\`${context}\`\`\`\`\`\
-      You should process the following dialog base on the context above as a background knowledge.\
-      Most importantly all your responses should be in the Markdown format.`;
+      You should process the following dialog basing on the context above as a background knowledge.`;
     let completion;
     try {
       completion = await openai.createChatCompletion(
