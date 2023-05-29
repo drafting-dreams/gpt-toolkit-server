@@ -1,5 +1,6 @@
 import { Transform, TransformCallback } from 'stream';
 import { Injectable } from '@nestjs/common';
+import { InvalidApiKeyError } from 'src/Errors';
 import type { ChatCompletionRequestMessage, OpenAIApi } from 'openai';
 
 class TransformerStream extends Transform {
@@ -34,9 +35,12 @@ export class ChatService {
       messages,
     }: { context?: string; messages: ChatCompletionRequestMessage[] },
   ) {
-    const prompt =
-      'Return all your responses for the user in the Markdown format.';
-    const promptWithContext = `Here's a context about what you and the user have discussed delimited by five backticks.\
+    const basePrompt =
+      "You're an intelligent AI that will have a dialog with the user. \
+      If they say something you don't know how to reply. Analyse if that's something you know, if it is, explain it. \
+      Your response should be the same language as the user's latest message.";
+    const prompt = `${basePrompt} Return all your responses for the user in the Markdown format.`;
+    const promptWithContext = `${basePrompt}\nHere's a context about what you and the user have discussed delimited by five backticks.\
       \`\`\`\`\`${context}\`\`\`\`\`\
       You should process the following dialog base on the context above as a background knowledge.\
       Most importantly all your responses should be in the Markdown format.`;
@@ -60,7 +64,11 @@ export class ChatService {
         { responseType: 'stream' },
       );
     } catch (error) {
-      throw error;
+      if (error.response?.status === 401) {
+        throw new InvalidApiKeyError();
+      } else {
+        throw error;
+      }
     }
 
     const completionStream = completion.data as any;
@@ -125,7 +133,11 @@ export class ChatService {
         temperature: 0,
       });
     } catch (error) {
-      throw error;
+      if (error.response?.status === 401) {
+        throw new InvalidApiKeyError();
+      } else {
+        throw error;
+      }
     }
 
     return completion.data.choices[0].message.content;
