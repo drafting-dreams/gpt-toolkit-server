@@ -18,12 +18,12 @@ export class ChatController {
     if (
       this.chatService.assessTokenCount({
         messages: [messages[messages.length - 1]],
-      }) > 100
+      }) > 800
     ) {
       return res.status(400).json({
         errorCode: 1,
         message:
-          'Your last message is too long, try to make it shorter(around 750 words).',
+          'Your last message is too long, try to make it shorter(around 600 words).',
       });
     }
 
