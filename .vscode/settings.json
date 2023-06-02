@@ -1,0 +1,4 @@
+{
+  "appService.defaultWebAppToDeploy": "/subscriptions/79f93971-45d0-497d-87f7-66b90f43b0ed/resourceGroups/gpt-toolkit/providers/Microsoft.Web/sites/gpt-toolkit-server",
+  "appService.deploySubpath": "."
+}
